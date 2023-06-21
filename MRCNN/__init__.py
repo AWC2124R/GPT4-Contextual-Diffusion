@@ -1,1 +1,1 @@
-# Placeholder file to let GPT-4 to import as a Python module
+# Placeholder file to import as a Python module
