@@ -1,0 +1,28 @@
+{
+    "initial_diffusion_generation.png": {
+        "filename": "initial_diffusion_generation.png",
+        "file_attributes": {},
+        "fileref": "",
+        "regions": {
+            "0": {
+                "shape_attributes": {
+                    "all_points_y": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "all_points_x": [
+                        0,
+                        1,
+                        2
+                    ],
+                    "name": "polygon"
+                },
+                "region_attributes": {
+                    "label": "Skirt"
+                }
+            }
+        },
+        "base64_img_data": ""
+    }
+}
