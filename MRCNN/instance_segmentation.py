@@ -23,76 +23,119 @@ import pastelmix
 from visualize import display_images
 from model import log
 
+# Define the directory and file paths for the model weights
+MODEL_DIR = ".\\MRCNN\\model_weights"
+MODEL_WEIGHTS_PATH = ".\\MRCNN\\model_weights\\pastel_mix_weights.h5"
+
+DEVICE = "/cpu:0" 
+GPU_COUNT = 1
+IMAGES_PER_GPU = 1
+
+# Define a function to find a file with a specific extension within a directory
 def find_file(directory, extension):
     for root, dirnames, filenames in os.walk(directory):
         for filename in fnmatch.filter(filenames, '*.' + extension):
             return filename
     return None
 
-def postprocess_classes(instanceSeg):
-    return instanceSeg
+# Define a function to create a matplotlib figure
+def get_ax(rows=1, cols=1, size=16):
+    _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
+    return ax
 
-def segment_instances(model, config, diffusionImagePath):
-    instanceSeg = {
-        'detectedClasses': [],
-        'segmentedMasks': []
-    }
+class MRCNNModel:
+    def __init__(self, model_dir=MODEL_DIR, model_weights_path=MODEL_WEIGHTS_PATH,
+                 device=DEVICE, gpu_count=GPU_COUNT, images_per_gpu=IMAGES_PER_GPU):
 
-    def get_ax(rows=1, cols=1, size=16):
-        _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
-        return ax
+        self.model_dir = model_dir
+        self.model_weights_path = model_weights_path
+        self.device = device
+        self.config = pastelmix.PastelMixConfig()
+        
+        # Set GPU count and images per GPU for the inference configuration
+        class InferenceConfig(self.config.__class__):
+            GPU_COUNT = gpu_count
+            IMAGES_PER_GPU = images_per_gpu
+        
+        self.config = InferenceConfig() # Replace the config with the inference configuration
 
-    filename = find_file(diffusionImagePath + '\\val', 'png')
+        self.model = 0
 
-    annotations = {
-        filename: {
-            "fileref":"",
-            "filename":filename,
-            "base64_img_data":"",
-            "file_attributes":{
-            },
-            "regions":{
-                "0":{
-                    "shape_attributes":{
-                        "name":"polygon",
-                        "all_points_x": [
-                            0,
-                            1,
-                            2
-                        ],
-                        "all_points_y":[
-                            0,
-                            1,
-                            2
-                        ]
-                    },
-                    "region_attributes": {
-                        "label": "Skirt"
+    def initialize_model(self):
+        with tf.device(DEVICE):
+            self.model = modellib.MaskRCNN(mode="inference", model_dir=self.model_dir, config=self.config) # Initialize the model in inference mode
+
+        weights_path = self.model_weights_path
+        self.model.load_weights(weights_path, by_name=True) # Load the model weights
+    
+    def postprocess_classes(self, instanceSeg):
+        return instanceSeg
+
+    def instance_segment(self, diffusionImagePath):
+        filename = find_file(diffusionImagePath + '\\val', 'png') # Find the PNG image in the given path
+
+        # Create a dictionary with polaceholder annotations
+        annotations = {
+            filename: {
+                "fileref":"",
+                "filename":filename,
+                "base64_img_data":"",
+                "file_attributes":{
+                },
+                "regions":{
+                    "0":{
+                        "shape_attributes":{
+                            "name":"polygon",
+                            "all_points_x": [
+                                0,
+                                1,
+                                2
+                            ],
+                            "all_points_y":[
+                                0,
+                                1,
+                                2
+                            ]
+                        },
+                        "region_attributes": {
+                            "label": "Skirt"
+                        }
                     }
                 }
             }
         }
-    }
 
-    jsonAnnotations = json.dumps(annotations, indent=4)
-    with open(".\\images\\val\\annotationsVGG.json", "w") as outfile:
-        outfile.write(jsonAnnotations)
+        # Convert annotations dictionary to JSON format and save it to a file
+        jsonAnnotations = json.dumps(annotations, indent=4)
+        with open(".\\images\\val\\annotationsVGG.json", "w") as outfile:
+            outfile.write(jsonAnnotations)
 
-    dataset = pastelmix.PastelMixDataset()
-    dataset.load_pastelmix(diffusionImagePath, "val")
-    dataset.prepare()
+        # Load the dataset using PastelMix dataset class
+        dataset = pastelmix.PastelMixDataset()
+        dataset.load_pastelmix(diffusionImagePath, "val")
+        dataset.prepare()
 
-    image_id = dataset.image_ids[0]
-    image, image_meta, gt_class_id, gt_bbox, gt_mask=modellib.load_image_gt(dataset, config, image_id, use_mini_mask=False)
-    
-    results = model.detect([image], verbose=2)
+        # Load image and its ground truth data
+        image_id = dataset.image_ids[0]
+        image, image_meta, gt_class_id, gt_bbox, gt_mask = modellib.load_image_gt(dataset, self.config, image_id,
+                                                                                  use_mini_mask=False)
 
-    ax = get_ax(1)
-    r = results[0]
-    
-    visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], 
-                            dataset.class_names, r['scores'], ax=ax,
-                            title="Predictions")
+        results = self.model.detect([image], verbose=2) # Run object detection with the model
 
-    instanceSeg = postprocess_classes(instanceSeg)
-    return instanceSeg
+        ax = get_ax(1) 
+        r = results[0]
+
+        # Display the object detection results
+        visualize.display_instances(image, r['rois'], r['masks'], r['class_ids'], 
+                                    dataset.class_names, r['scores'], ax=ax,
+                                    title="Predictions")
+
+        # Create a dictionary containing instance segmentation results
+        instanceSeg = {
+            'detectedClasses': r['class_ids'],
+            'regionOfInterests': r['rois'],
+            'segmentedMasks': r['masks']
+        }
+
+        instanceSeg = self.postprocess_classes(instanceSeg) # Post-process the instance segmentation results
+        return instanceSeg
