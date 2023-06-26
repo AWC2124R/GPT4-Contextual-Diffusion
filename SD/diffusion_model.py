@@ -3,6 +3,7 @@ import requests
 import io
 import base64
 import PIL
+from PIL import Image
 
 # Define the URL for the SD API
 SD_URL = 'http://127.0.0.1:7860'
@@ -26,6 +27,16 @@ GENERATION_PAYLOAD_DEFAULT = {
 }
 
 INPAINT_PAYLOAD_DEFAULT = {
+    'styles': ["Anime-Image Baseline"],
+    'resize_mode': 0,
+    'mask_blur': 10,
+    "inpainting_mask_invert": 0,
+    "inpainting_fill": 1,
+    "inpaint_full_res": True,
+    "inpaint_full_res_padding": 32,
+    'steps': 40,
+    'sampler_index': "DPM++ 2M Karras",
+    'denoising_strength': 0.6
 }
 
 # Define the SDModel class
@@ -58,7 +69,7 @@ class SDModel:
         rJson = txt2imgResponse.json()
 
         # Decode the base64-encoded image and open it as a PIL Image object
-        image = PIL.Image.open(io.BytesIO(base64.b64decode(rJson['images'][0].split(",", 1)[0])))
+        image = Image.open(io.BytesIO(base64.b64decode(rJson['images'][0].split(",", 1)[0])))
 
         # Define a payload for the PNG info request, including the base64-encoded image
         PNGPayload = {
@@ -71,7 +82,19 @@ class SDModel:
         PNGInfo.add_text("parameters", PNGInfoResponse.json().get("info"))  # Add the info from the response to the PNGInfo object
 
         # Return the image and PNGInfo object
-        return (image, PNGInfo)
+        return (image, PNGInfo, rJson['images'][0])
 
-    def inpaint_image(subPrompt, segmentedMask, diffusionImage):
-        pass
+    def inpaint_image(self, subPrompt, segmentedMask, diffusionImage):
+        diffusionPayload = self.inpaint_payload
+        diffusionPayload['prompt'] = subPrompt
+        diffusionPayload['init_images'] = [ "data:image/png;base64," + diffusionImage ]
+        diffusionPayload['mask'] = "data:image/png;base64," + segmentedMask
+
+        img2imgResponse = requests.post(url=self.api_url + '/sdapi/v1/img2img', json=diffusionPayload)  # Send the POST request
+        rJson = img2imgResponse.json()
+        
+        image = Image.open(io.BytesIO(base64.b64decode(rJson['images'][0].split(",", 1)[0])))
+
+        # Add PNG INFO POST Request
+
+        return image

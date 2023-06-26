@@ -1,8 +1,5 @@
 {
     "initial_diffusion_generation.png": {
-        "filename": "initial_diffusion_generation.png",
-        "file_attributes": {},
-        "base64_img_data": "",
         "fileref": "",
         "regions": {
             "0": {
@@ -10,7 +7,6 @@
                     "label": "Skirt"
                 },
                 "shape_attributes": {
-                    "name": "polygon",
                     "all_points_x": [
                         0,
                         1,
@@ -20,9 +16,13 @@
                         0,
                         1,
                         2
-                    ]
+                    ],
+                    "name": "polygon"
                 }
             }
-        }
+        },
+        "base64_img_data": "",
+        "file_attributes": {},
+        "filename": "initial_diffusion_generation.png"
     }
 }
