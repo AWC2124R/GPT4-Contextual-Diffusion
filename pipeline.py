@@ -80,7 +80,6 @@ class MRCNNConfig:
 # Function that maps 2D Boolean Mask to a base64 string
 def mask2str(mask):
     maskImg = Image.fromarray((255 * np.array(mask)).astype(np.uint8))
-    maskImg.save("test.png")
     
     if PipelineConfig.IMAGE_WIDTH >= PipelineConfig.IMAGE_HEIGHT:
         maskImg = maskImg.resize((PipelineConfig.IMAGE_WIDTH, PipelineConfig.IMAGE_WIDTH))
