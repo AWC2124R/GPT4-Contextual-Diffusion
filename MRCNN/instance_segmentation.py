@@ -1,3 +1,13 @@
+"""
+GPT4 Contextual Diffusion
+
+Module for MRCNN Instance Segmenetation.
+
+Copyright (c) 2023 AWC2124R(Taglink).
+Licensed under the MIT License (see LICENSE for details)
+Written by Taehoon Hwang
+"""
+
 import os
 import re
 import sys
@@ -11,6 +21,7 @@ import tensorflow as tf
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from PIL import Image
 
 ROOT_DIR = ".\\MRCNN\\MRCNN-TF1"
 sys.path.append(ROOT_DIR)
@@ -31,6 +42,8 @@ DEVICE = "/cpu:0"
 GPU_COUNT = 1
 IMAGES_PER_GPU = 1
 
+IMAGE_MAX_DIM = 1024
+
 # Define a function to find a file with a specific extension within a directory
 def find_file(directory, extension):
     for root, dirnames, filenames in os.walk(directory):
@@ -45,12 +58,15 @@ def get_ax(rows=1, cols=1, size=16):
 
 class MRCNNModel:
     def __init__(self, model_dir=MODEL_DIR, model_weights_path=MODEL_WEIGHTS_PATH,
-                 device=DEVICE, gpu_count=GPU_COUNT, images_per_gpu=IMAGES_PER_GPU):
+                 device=DEVICE, gpu_count=GPU_COUNT, images_per_gpu=IMAGES_PER_GPU,
+                 image_max_dim=IMAGE_MAX_DIM):
 
         self.model_dir = model_dir
         self.model_weights_path = model_weights_path
         self.device = device
         self.config = pastelmix.PastelMixConfig()
+
+        self.image_max_dim = image_max_dim
         
         # Set GPU count and images per GPU for the inference configuration
         class InferenceConfig(self.config.__class__):
@@ -69,7 +85,25 @@ class MRCNNModel:
         self.model.load_weights(weights_path, by_name=True) # Load the model weights
     
     def postprocess_classes(self, instanceSeg):
-        return instanceSeg
+        pInstanceSeg = {
+            'detectedClasses': [],
+            'segmentedMasks': []
+        }
+
+        # print(instanceSeg['segmentedMasks'][:, :, 0].shape)
+
+        masks = np.copy(instanceSeg['segmentedMasks'])
+
+        for detClass, segMaskIdx in zip(instanceSeg['detectedClasses'], np.arange(masks.shape[2])):
+            if detClass in pInstanceSeg['detectedClasses']:
+                idx = pInstanceSeg['detectedClasses'].index(detClass)
+                pInstanceSeg['segmentedMasks'][idx] = [[a or b for a, b in zip(sublist1, sublist2)] 
+                                                       for sublist1, sublist2 in zip(instanceSeg['segmentedMasks'][:, :, segMaskIdx], pInstanceSeg['segmentedMasks'][idx])]
+            else:
+                pInstanceSeg['detectedClasses'].append(detClass)
+                pInstanceSeg['segmentedMasks'].append(instanceSeg['segmentedMasks'][:, :, segMaskIdx])
+
+        return pInstanceSeg
 
     def instance_segment(self, diffusionImagePath):
         filename = find_file(diffusionImagePath + '\\val', 'png') # Find the PNG image in the given path
@@ -133,9 +167,9 @@ class MRCNNModel:
         # Create a dictionary containing instance segmentation results
         instanceSeg = {
             'detectedClasses': r['class_ids'],
-            'regionOfInterests': r['rois'],
             'segmentedMasks': r['masks']
         }
 
-        instanceSeg = self.postprocess_classes(instanceSeg) # Post-process the instance segmentation results
-        return instanceSeg
+        pinstanceSeg = self.postprocess_classes(instanceSeg) # Post-process the instance segmentation results
+
+        return pinstanceSeg

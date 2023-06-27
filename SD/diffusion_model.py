@@ -1,3 +1,13 @@
+"""
+GPT4 Contextual Diffusion
+
+Main Module for Stable Diffusion API Calls.
+
+Copyright (c) 2023 AWC2124R(Taglink).
+Licensed under the MIT License (see LICENSE for details)
+Written by Taehoon Hwang
+"""
+
 import json
 import requests
 import io
@@ -29,7 +39,7 @@ GENERATION_PAYLOAD_DEFAULT = {
 INPAINT_PAYLOAD_DEFAULT = {
     'styles': ["Anime-Image Baseline"],
     'resize_mode': 0,
-    'mask_blur': 10,
+    'mask_blur': 30,
     "inpainting_mask_invert": 0,
     "inpainting_fill": 1,
     "inpaint_full_res": True,
@@ -81,7 +91,7 @@ class SDModel:
         PNGInfo = PIL.PngImagePlugin.PngInfo()
         PNGInfo.add_text("parameters", PNGInfoResponse.json().get("info"))  # Add the info from the response to the PNGInfo object
 
-        # Return the image and PNGInfo object
+        # Return the image / encoded iamge and PNGInfo object
         return (image, PNGInfo, rJson['images'][0])
 
     def inpaint_image(self, subPrompt, segmentedMask, diffusionImage):
@@ -95,6 +105,15 @@ class SDModel:
         
         image = Image.open(io.BytesIO(base64.b64decode(rJson['images'][0].split(",", 1)[0])))
 
-        # Add PNG INFO POST Request
+        # Define a payload for the PNG info request, including the base64-encoded image
+        PNGPayload = {
+            "image": "data:image/png;base64," + rJson['images'][0]
+        }
 
-        return image
+        # Send a POST request to the API's png-info endpoint with the PNG payload, and parse the response
+        PNGInfoResponse = requests.post(url=self.api_url + '/sdapi/v1/png-info', json=PNGPayload)
+        PNGInfo = PIL.PngImagePlugin.PngInfo()
+        PNGInfo.add_text("parameters", PNGInfoResponse.json().get("info"))  # Add the info from the response to the PNGInfo object
+
+        # Return the image / encoded iamge and PNGInfo object
+        return (image, PNGInfo, rJson['images'][0])

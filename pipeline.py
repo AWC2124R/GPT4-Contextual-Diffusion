@@ -1,3 +1,16 @@
+"""
+GPT4 Contextual Diffusion
+
+Main Pipeline Module for LLM based Contextual Diffusion.
+
+Copyright (c) 2023 AWC2124R(Taglink).
+Licensed under the MIT License (see LICENSE for details)
+Written by Taehoon Hwang
+"""
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 import os
 import io
 import sys
@@ -9,6 +22,7 @@ import numpy as np
 import skimage
 import tensorflow as tf
 import base64
+import shutil
 
 from SD import diffusion_model
 from GPT4 import llm_call
@@ -23,6 +37,9 @@ class PipelineConfig:
     IMAGE_WIDTH = 1280
     IMAGE_HEIGHT = 720
 
+    USE_UPSCALING = True
+    UPSCALE_FACTOR = 2
+
 # Define a configuration class for the Stable Diffusion model
 class SDConfig:
     OPTION_PAYLOAD = {
@@ -31,12 +48,14 @@ class SDConfig:
 
     GENERATION_PAYLOAD = {
         'steps': 20,  # Number of steps for the SD model to take during generation
-        'width': PipelineConfig.IMAGE_WIDTH / 2,
-        'height': PipelineConfig.IMAGE_HEIGHT / 2,
 
-        'enable_hr': True,  # Whether to enable high-resolution generation
-        'hr_scale': 2,
+        'width': PipelineConfig.IMAGE_WIDTH / PipelineConfig.UPSCALE_FACTOR if PipelineConfig.USE_UPSCALING else PipelineConfig.IMAGE_WIDTH,
+        'height': PipelineConfig.IMAGE_HEIGHT / PipelineConfig.UPSCALE_FACTOR if PipelineConfig.USE_UPSCALING else PipelineConfig.IMAGE_HEIGHT,
+
+        'enable_hr': PipelineConfig.USE_UPSCALING,  # Whether to enable high-resolution generation
+        'hr_scale': PipelineConfig.UPSCALE_FACTOR,
         'hr_second_pass_steps': 20,
+
         'denoising_strength': 0.6  # Strength of the denoising to apply during generation
     }
 
@@ -48,9 +67,40 @@ class MRCNNConfig:
     MODEL_DIR = ".\\MRCNN\\model_weights"  # Directory where the MRCNN model weights are stored
     MODEL_WEIGHTS_PATH = ".\\MRCNN\\model_weights\\pastel_mix_weights.h5"
 
+    GPU_COUNT = 1
     IMAGES_PER_GPU = 1
 
     IMAGE_MAX_DIM = 1024
+
+    SEGMENT_CLASSES = ["Skirt", "Shirt", "Hat", "Bag", "Shoe", "Cars", "Buildings",
+               "Alleyshops", "Jacket", "Dress", "BodyofWater", "Sky", "Lightsource",
+               "Shelfs", "Residentialcomplex", "Brightwindow"]
+
+
+# Function that maps 2D Boolean Mask to a base64 string
+def mask2str(mask):
+    maskImg = Image.fromarray((255 * np.array(mask)).astype(np.uint8))
+    maskImg.save("test.png")
+    
+    if PipelineConfig.IMAGE_WIDTH >= PipelineConfig.IMAGE_HEIGHT:
+        maskImg = maskImg.resize((PipelineConfig.IMAGE_WIDTH, PipelineConfig.IMAGE_WIDTH))
+        maskImg = maskImg.crop((0,
+                                PipelineConfig.IMAGE_WIDTH / 2 - PipelineConfig.IMAGE_HEIGHT / 2,
+                                PipelineConfig.IMAGE_WIDTH,
+                                PipelineConfig.IMAGE_WIDTH / 2 + PipelineConfig.IMAGE_HEIGHT / 2))
+    else:
+        maskImg = maskImg.resize((PipelineConfig.IMAGE_HEIGHT, PipelineConfig.IMAGE_HEIGHT))
+        maskImg = maskImg.crop((PipelineConfig.IMAGE_HEIGHT / 2 - PipelineConfig.IMAGE_WIDTH / 2,
+                                0,
+                                PipelineConfig.IMAGE_HEIGHT / 2 + PipelineConfig.IMAGE_WIDTH / 2,
+                                PipelineConfig.IMAGE_HEIGHT))
+    
+    bufferBytes = io.BytesIO()
+    maskImg.save(bufferBytes, format="PNG")
+    img_str = base64.encodebytes(bufferBytes.getvalue()).decode()
+
+    return img_str
+
 
 # Create instances of the SD and MRCNN models with the appropriate configurations
 stableDiffusion = diffusion_model.SDModel(option_payload=SDConfig.OPTION_PAYLOAD,
@@ -60,33 +110,31 @@ stableDiffusion.initialize_model()  # Initialize the SD model
 
 mrcnn = instance_segmentation.MRCNNModel(model_dir=MRCNNConfig.MODEL_DIR,
                                          model_weights_path=MRCNNConfig.MODEL_WEIGHTS_PATH,
-                                         images_per_gpu=MRCNNConfig.IMAGES_PER_GPU)
+                                         gpu_count=MRCNNConfig.GPU_COUNT,
+                                         images_per_gpu=MRCNNConfig.IMAGES_PER_GPU,
+                                         image_max_dim=MRCNNConfig.IMAGE_MAX_DIM)
 mrcnn.initialize_model()  # Initialize the MRCNN model
 
 # Generate an image using the SD model and save the image information
 initialPrompt = "1girl, full body, city background"
 diffusionImage, imageInfo, imageStr = stableDiffusion.generate_image(initialPrompt)
-diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\initial_diffusion_generation.png", pnginfo = imageInfo)
+diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\buffer_image.png", pnginfo = imageInfo)
+diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\initial_image.png", pnginfo = imageInfo)
 
 # Run the instance segmentation and inpainting for as many times as specified by RECURSION_DEPTH
 for depth in range(PipelineConfig.RECURSION_DEPTH):
     instanceSeg = mrcnn.instance_segment(PipelineConfig.IMAGE_SAVE_PATH) # Perform instance segmentation using the MRCNN model  
-
-    mask = instanceSeg['segmentedMasks'].reshape(MRCNNConfig.IMAGE_MAX_DIM, MRCNNConfig.IMAGE_MAX_DIM, len(instanceSeg['detectedClasses']))
-
-    img = Image.fromarray((255 * np.array(mask[:, :, 0])).astype(np.uint8))
-    img = img.resize((1280, 1280)).crop((0, 1280 / 2 - 720 / 2, 1280, 1280 / 2 + 720 / 2))
-    buffered = io.BytesIO()
-    img.save(buffered, format="PNG")
-    img_str = base64.encodebytes(buffered.getvalue()).decode()
-    image = Image.open(io.BytesIO(base64.b64decode(img_str)))
-
-    img = stableDiffusion.inpaint_image("", img_str, imageStr)
-    img.save(PipelineConfig.IMAGE_SAVE_PATH + "\\inpaint_generation.png")
-
+    
     # subPrompts = llm_call.call_gpt4(instanceSeg['detectedClasses'], INITIAL_USER_PROMPT)
 
-    # for segmentedMask, subPrompt in zip(instanceSeg['segmentedMasks'], subPrompts):
-    #     diffusionImage = diffusion_model.inpaint_image(subPrompt, segmentedMask, diffusionImage)
+    dir = PipelineConfig.IMAGE_SAVE_PATH + "\\" + str(depth + 1)
+    if os.path.exists(dir):
+        shutil.rmtree(dir)
+    os.makedirs(dir)
 
-    # diffusionImage.save('images\\val\\initial_diffusion_generation.png', pnginfo = imageInfo)
+    for idx, segMask in zip(np.arange(len(instanceSeg['detectedClasses'])), instanceSeg['segmentedMasks']):
+        mask_str = mask2str(segMask)
+        img, imageInfo, imageStr = stableDiffusion.inpaint_image("", mask_str, imageStr)
+        img.save(dir + "\\" + str(idx) + "-" + str(instanceSeg['detectedClasses'][idx]) + ".png", pnginfo=imageInfo)
+
+    img.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\buffer_image.png", pnginfo = imageInfo)
