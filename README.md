@@ -12,6 +12,10 @@ The pipeline is broken down into the following stages:
 2. **Instance Segmentation with Mask R-CNN**: The generated image is passed to a Mask R-CNN model, which performs instance segmentation to identify and isolate different objects within the image.
 3. **LLM Context Generation**: For each segmented object, an LLM provides context that can be used in subsequent runs of the pipeline to generate more precise and contextually relevant images.
 
+A more detailed overview of the pipeline is shown in the image below.
+
+![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/Pipeline%20Overview.png)
+
 ## Notes
 While the MRCNN code is contained within the repository in order to compensate for a specifically trained MRCNN model, the Stable Diffusion Model is run locally on a different instance, in order to access the SD API. Using the local SD instance, users will have to run their own SD instance in order for the pipeline to function.
 
