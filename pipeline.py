@@ -3,7 +3,7 @@ GPT4 Contextual Diffusion
 
 Main Pipeline Module for LLM based Contextual Diffusion.
 
-Copyright (c) 2023 AWC2124R(Taglink).
+Copyright (c) 2023 AWC2124R.
 Licensed under the MIT License (see LICENSE for details)
 Written by Taehoon Hwang
 """
@@ -17,10 +17,7 @@ import sys
 import PIL
 from PIL import Image
 import base64
-import keras
 import numpy as np
-import skimage
-import tensorflow as tf
 import base64
 import shutil
 
@@ -46,6 +43,10 @@ class SDConfig:
         'sd_model_checkpoint': "pastelmix-better-vae-fp32.ckpt [943a810f75]"  # Specify the model checkpoint for the SD model
     }
 
+    OPTION_PAYLOAD_UPDATE = {
+        'sd_model_checkpoint': "v2-1_512-ema-pruned.ckpt [88ecb78256]"
+    }
+
     GENERATION_PAYLOAD = {
         'steps': 20,  # Number of steps for the SD model to take during generation
 
@@ -60,6 +61,15 @@ class SDConfig:
     }
 
     INPAINT_PAYLOAD = {
+        'styles': ["Anime-Image Baseline"],
+        'mask_blur': 30,
+        'steps': 40
+    }
+
+    INPAINT_PAYLOAD_UPDATE = {
+        'styles': ["Realistic Generationn"],
+        'mask_blur': 15,
+        'steps': 60
     }
 
 # Define a configuration class for the MRCNN model
@@ -115,7 +125,7 @@ mrcnn = instance_segmentation.MRCNNModel(model_dir=MRCNNConfig.MODEL_DIR,
 mrcnn.initialize_model()  # Initialize the MRCNN model
 
 # Generate an image using the SD model and save the image information
-initialPrompt = "1girl, full body, city background"
+initialPrompt = "1girl, full body, city background, walking"
 diffusionImage, imageInfo, imageStr = stableDiffusion.generate_image(initialPrompt)
 diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\buffer_image.png", pnginfo = imageInfo)
 diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\initial_image.png", pnginfo = imageInfo)
@@ -131,9 +141,23 @@ for depth in range(PipelineConfig.RECURSION_DEPTH):
         shutil.rmtree(dir)
     os.makedirs(dir)
 
+    previousOption = 0
     for idx, segMask in zip(np.arange(len(instanceSeg['detectedClasses'])), instanceSeg['segmentedMasks']):
+        class_name = MRCNNConfig.SEGMENT_CLASSES[instanceSeg['detectedClasses'][idx] - 1]
+        
+        if (class_name == "Buildings" or class_name == "Alleyshops"):
+            if previousOption != 1:
+                stableDiffusion.update_options(SDConfig.OPTION_PAYLOAD_UPDATE)
+                stableDiffusion.update_inpaint_payload(SDConfig.INPAINT_PAYLOAD_UPDATE)
+                previousOption = 1
+        else:
+            if previousOption != 0:
+                stableDiffusion.update_options(SDConfig.OPTION_PAYLOAD)
+                stableDiffusion.update_inpaint_payload(SDConfig.INPAINT_PAYLOAD)
+                previousOption = 0
+
         mask_str = mask2str(segMask)
-        img, imageInfo, imageStr = stableDiffusion.inpaint_image("", mask_str, imageStr)
-        img.save(dir + "\\" + str(idx) + "-" + str(instanceSeg['detectedClasses'][idx]) + ".png", pnginfo=imageInfo)
+        img, imageInfo, imageStr = stableDiffusion.inpaint_image(class_name, mask_str, imageStr)
+        img.save(dir + "\\itr" + str(idx) + "-" + class_name + ".png", pnginfo=imageInfo)
 
     img.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\buffer_image.png", pnginfo = imageInfo)

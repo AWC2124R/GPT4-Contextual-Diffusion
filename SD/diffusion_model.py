@@ -3,7 +3,7 @@ GPT4 Contextual Diffusion
 
 Main Module for Stable Diffusion API Calls.
 
-Copyright (c) 2023 AWC2124R(Taglink).
+Copyright (c) 2023 AWC2124R.
 Licensed under the MIT License (see LICENSE for details)
 Written by Taehoon Hwang
 """
@@ -68,6 +68,13 @@ class SDModel:
     def initialize_model(self):
         response = requests.post(url=self.api_url + '/sdapi/v1/options', json=self.option_payload)
         return response
+
+    def update_options(self, option_payload):
+        response = requests.post(url=self.api_url + '/sdapi/v1/options', json=option_payload)
+        return response
+    
+    def update_inpaint_payload(self, inpaint_payload):
+        self.inpaint_payload = dict(INPAINT_PAYLOAD_DEFAULT, **inpaint_payload)
 
     # Generate an image by sending a POST request to the API's txt2img endpoint
     # with the generation payload and the user prompt

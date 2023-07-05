@@ -1,28 +1,28 @@
 {
     "buffer_image.png": {
+        "fileref": "",
+        "filename": "buffer_image.png",
+        "base64_img_data": "",
+        "file_attributes": {},
         "regions": {
             "0": {
-                "region_attributes": {
-                    "label": "Skirt"
-                },
                 "shape_attributes": {
-                    "all_points_y": [
-                        0,
-                        1,
-                        2
-                    ],
                     "name": "polygon",
                     "all_points_x": [
                         0,
                         1,
                         2
+                    ],
+                    "all_points_y": [
+                        0,
+                        1,
+                        2
                     ]
+                },
+                "region_attributes": {
+                    "label": "Skirt"
                 }
             }
-        },
-        "filename": "buffer_image.png",
-        "base64_img_data": "",
-        "file_attributes": {},
-        "fileref": ""
+        }
     }
 }
