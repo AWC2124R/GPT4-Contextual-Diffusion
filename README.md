@@ -20,8 +20,8 @@ A more detailed overview of the pipeline is shown in the image below.
 While the MRCNN code is contained within the repository in order to compensate for a specifically trained MRCNN model, the Stable Diffusion Model is run locally on a different instance, in order to access the SD API. Using the local SD instance, users will have to run their own SD instance in order for the pipeline to function.
 
 ## Development Environment
-- Python 3.5.6
-- TensorFlow 1.3.0
+- Python 3.7.16
+- TensorFlow 1.13.0
 - Keras 2.0.8
 - PIL
 - Matplotlib
