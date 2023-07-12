@@ -14,7 +14,7 @@ The pipeline is broken down into the following stages:
 
 A general overview of the pipeline is shown in the image below. To view a more detailed pipeline structure, refer to the assets folder.
 
-![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/pipeline_overview.png){: width="800"}
+![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/pipeline_overview.png)
 
 ## Examples
 The following is an example illustrating the enhancements achieved through the use of a GPT-4 integrated context pipeline for Stable Diffusion.
