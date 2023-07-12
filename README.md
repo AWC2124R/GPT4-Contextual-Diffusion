@@ -12,9 +12,9 @@ The pipeline is broken down into the following stages:
 2. **Instance Segmentation with Mask R-CNN**: The generated image is passed to a Mask R-CNN model, which performs instance segmentation to identify and isolate different objects within the image.
 3. **LLM Context Generation**: For each segmented object, an LLM(GPT-4 in this case) provides context that can be used in subsequent runs of the pipeline to generate more precise and contextually relevant images.
 
-A general overview of the pipeline is shown in the image below. To view a more detailed pipeline structure, please refer to the assets folder.
+A general overview of the pipeline is shown in the image below. To view a more detailed pipeline structure, refer to the assets folder.
 
-![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/pipeline_overview.png)
+![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/pipeline_overview.png | width=800)
 
 ## Examples
 The following is an example illustrating the enhancements achieved through the use of a GPT-4 integrated context pipeline for Stable Diffusion.
