@@ -1,6 +1,6 @@
 # GPT4-Contextual-Diffusion
 
-This project is an end-to-end pipeline that integrates Language Learning Models (LLMs), Stable Diffusion Models, and an instance segmentation model (Mask R-CNN) to provide a rich context for generated images. **Note that it is still in development.**
+This project is an end-to-end pipeline that integrates Language Learning Models (LLMs), Stable Diffusion Models, and an instance segmentation model (Mask R-CNN) to provide a rich context for generated images.
 
 ## Overview
 
