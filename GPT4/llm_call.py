@@ -1,9 +1,9 @@
 """
 GPT4 Contextual Diffusion
 
-Main Pipeline Module for LLM based Contextual Diffusion.
+Module for LLM(GPT-4) Calls.
 
-Copyright (c) 2023 AWC2124R.
+Copyright (c) 2023 Taehoon Hwang.
 Licensed under the MIT License (see LICENSE for details)
 Written by Taehoon Hwang
 """
