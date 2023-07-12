@@ -62,15 +62,20 @@ class SDConfig:
 
     INPAINT_PAYLOAD = {
         'styles': ["Anime-Image Baseline"],
-        'mask_blur': 30,
-        'steps': 40
+        'mask_blur': 20,
+        'steps': 40,
+        'width': PipelineConfig.IMAGE_WIDTH,
+        'height': PipelineConfig.IMAGE_HEIGHT,
     }
 
-    INPAINT_PAYLOAD_UPDATE = {
-        'styles': ["Realistic Generationn"],
-        'mask_blur': 15,
-        'steps': 60
-    }
+    # Different Style Generation Test Payload
+    # INPAINT_PAYLOAD_UPDATE = { 
+    #     'styles': ["Realistic Generationn"],
+    #     'mask_blur': 15,
+    #     'steps': 60,
+    #     'width': PipelineConfig.IMAGE_WIDTH,
+    #     'height': PipelineConfig.IMAGE_HEIGHT,
+    # }
 
 # Define a configuration class for the MRCNN model
 class MRCNNConfig:
@@ -134,30 +139,22 @@ diffusionImage.save(PipelineConfig.IMAGE_SAVE_PATH + "\\initial_image.png", pngi
 for depth in range(PipelineConfig.RECURSION_DEPTH):
     instanceSeg = mrcnn.instance_segment(PipelineConfig.IMAGE_SAVE_PATH) # Perform instance segmentation using the MRCNN model  
     
-    # subPrompts = llm_call.call_gpt4(instanceSeg['detectedClasses'], INITIAL_USER_PROMPT)
+    detectedClassesString = [MRCNNConfig.SEGMENT_CLASSES[dClassIdx - 1] for dClassIdx in instanceSeg['detectedClasses']]
+    
+    subPrompts = llm_call.call_gpt4(detectedClassesString, initialPrompt)
+    print(subPrompts)
 
     dir = PipelineConfig.IMAGE_SAVE_PATH + "\\" + str(depth + 1)
     if os.path.exists(dir):
         shutil.rmtree(dir)
     os.makedirs(dir)
 
-    previousOption = 0
     for idx, segMask in zip(np.arange(len(instanceSeg['detectedClasses'])), instanceSeg['segmentedMasks']):
         class_name = MRCNNConfig.SEGMENT_CLASSES[instanceSeg['detectedClasses'][idx] - 1]
-        
-        if (class_name == "Buildings" or class_name == "Alleyshops"):
-            if previousOption != 1:
-                stableDiffusion.update_options(SDConfig.OPTION_PAYLOAD_UPDATE)
-                stableDiffusion.update_inpaint_payload(SDConfig.INPAINT_PAYLOAD_UPDATE)
-                previousOption = 1
-        else:
-            if previousOption != 0:
-                stableDiffusion.update_options(SDConfig.OPTION_PAYLOAD)
-                stableDiffusion.update_inpaint_payload(SDConfig.INPAINT_PAYLOAD)
-                previousOption = 0
 
         mask_str = mask2str(segMask)
-        img, imageInfo, imageStr = stableDiffusion.inpaint_image(class_name, mask_str, imageStr)
+        img, imageInfo, imageStr = stableDiffusion.inpaint_image(subPrompts[class_name], mask_str, imageStr)
         img.save(dir + "\\itr" + str(idx) + "-" + class_name + ".png", pnginfo=imageInfo)
 
     img.save(PipelineConfig.IMAGE_SAVE_PATH + "\\val\\buffer_image.png", pnginfo = imageInfo)
+    

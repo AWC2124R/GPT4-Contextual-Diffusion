@@ -42,8 +42,8 @@ INPAINT_PAYLOAD_DEFAULT = {
     'mask_blur': 30,
     "inpainting_mask_invert": 0,
     "inpainting_fill": 1,
-    "inpaint_full_res": True,
-    "inpaint_full_res_padding": 32,
+    "inpaint_full_res": False,
+    "inpaint_full_res_padding": 35,
     'steps': 40,
     'sampler_index': "DPM++ 2M Karras",
     'denoising_strength': 0.6
