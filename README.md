@@ -17,7 +17,7 @@ A general overview of the pipeline is shown in the image below. To view a more d
 ![Pipeline Overview](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/pipeline_overview_pseudo.png)
 
 ## Examples
-The following is an example illustrating the enhancements achieved through the use of a GPT-4 integrated context pipeline for Stable Diffusion.
+The following is an example illustrating the enhancements achieved through the use of a GPT-4 integrated context pipeline for Stable Diffusion, with 1 recursion step.
 
 ![Example](https://github.com/AWC2124R/GPT4-Contextual-Diffusion/blob/master/Assets/result1.png)
 
